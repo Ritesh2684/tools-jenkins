@@ -12,7 +12,7 @@ In cases where you require any external services, feel free to comment them out 
 
 As a solution to Part 1, I have created a jenkins pipeline script to build the component as docker image and push to docker repository with the required steps in the pipeline i.e. code checkout, build, run tests, execute validations, security checks, tag & push. 
 
-## Tools used
+### Tools used
 
 Git : Code repository
 Maven : To build the application
