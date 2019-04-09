@@ -14,17 +14,17 @@ As a solution to Part 1, I have created a jenkins pipeline script to build the c
 
 ### Tools used
 
-Git : Code repository
-Maven : To build the application
-SonarQube : Code Quality Standards validation
-Nexus IQ : monitoring of open source libraries vulnerabilities in the application.
-HP Fortify : To scan the application for security vulnerabilities
-Docker Lint : For standards validation of Docker file
-Twistlock : Tool used for Container Security i.e image scan and dynamic container scanning for vulnerabilities. Other tools Nexus IQ, Anchore, Aquasec
-Docker : For converting the application build into an image, tag and push the image.
-Nexus3 : As artifact management for Docker Images
-Jenkins : For execution of Pipeline build
-Slack : For Notification
+* Git : Code repository
+* Maven : To build the application
+* SonarQube : Code Quality Standards validation
+* Nexus IQ : monitoring of open source libraries vulnerabilities in the application.
+* HP Fortify : To scan the application for security vulnerabilities
+* Docker Lint : For standards validation of Docker file
+* Twistlock : Tool used for Container Security i.e image scan and dynamic container scanning for vulnerabilities. Other tools Nexus IQ, Anchore, Aquasec
+* Docker : For converting the application build into an image, tag and push the image.
+* Nexus3 : As artifact management for Docker Images
+* Jenkins : For execution of Pipeline build
+* Slack : For Notification
 
 ### Steps Executed to prepare the solution
 
