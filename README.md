@@ -40,18 +40,18 @@ As a solution to Part 1, I have created a jenkins pipeline script to build the c
 3) Created the jenkins pipeline script refer to jenkinsfile present in the repository. This file could be used within Jenkins pipeline Job to build the specified application.
 
 4) Steps executed in the Jenkins file 
-        - Slack Notificaion for start of the pipeline
-        - Code Checkout from github
-        - prepare settings.xml
-        - Build and execute test cases using Maven
-        - Static Code analysis using Nexus IQ and SonarQube
-        - Scan for security violations using HPFortify
-        - Syntax check of docker file using docker lint
-        - build image using Docker
-        - Container security scan using Twistlock
-        - Execution of Smoke test cases
-        - Tag and push docker image
-        - Slack Notification for status update of the job.
+* Slack Notificaion for start of the pipeline
+* Code Checkout from github
+* prepare settings.xml
+* Build and execute test cases using Maven
+* Static Code analysis using Nexus IQ and SonarQube
+* Scan for security violations using HPFortify
+* Syntax check of docker file using docker lint
+* build image using Docker
+* Container security scan using Twistlock
+* Execution of Smoke test cases
+* Tag and push docker image
+* Slack Notification for status update of the job.
         
 ## Part 2
 
