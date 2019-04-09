@@ -61,7 +61,7 @@ People love your new Jenkins job and have started copying parts of it to their o
 
 As a solution to Part 2, Pipeline scripts should be maintained in scm repository ( Github, bitbucket etc ) and included in the Jenkins environment as Pipeline Library. All project should use the Library instead of making a copy of our beloved Jenkins job.
 
-![public task](pipeline-library.PNG)
+![Alt text](./pipeline-library.PNG)
 
 As a reference, I have added a 
 
