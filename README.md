@@ -37,7 +37,7 @@ As a solution to Part 1, I have created a jenkins pipeline script to build the c
 
 3) Added a docker file to the application, so that it could be build as a docker image.
 
-3) Created the jenkins pipeline script refer to jenkinsfile present in the repository. This file could be used within Jenkins pipeline Job to build the specified application.
+3) Created the jenkins pipeline script refer to <b> jenkinsfile </b> present in the repository. This file could be used within Jenkins pipeline Job to build the specified application.
 
 4) Steps executed in the Jenkins file 
 * Slack Notificaion for start of the pipeline
@@ -63,7 +63,7 @@ As a solution to Part 2, Pipeline scripts should be maintained in scm repository
 
 ![Screenshot](pipeline-library.png)
 
-As a reference, I have added a jenkinsfile_usingLibrary file in the repository, which specifies how the library added in Jenkins environment could be referred from another project in need of the same scripts. 
+As a reference, I have added a <b> jenkinsfile_usingLibrary </b> file in the repository, which specifies how the library added in Jenkins environment could be referred from another project in need of the same scripts. 
 All the required properties could be configured and passed to the function dockerizedSTPL as a config map to a function in our Jenkins job.
 
 
