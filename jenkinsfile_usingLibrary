@@ -1,0 +1,9 @@
+@Library(['stpl-java-dockerized']) _
+
+def config = [systemLetterCode                    : 'MYAPP',
+              hpeFortifyId                        : 'my-app',
+              nexusLCApplicationId                : 'my-app',
+              builderCredentialsId                : 'MYAPP_BUILDER',
+			  dockerImageName                     : 'my-app'
+        ]        
+dockerizedSTPL(config)

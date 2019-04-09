@@ -1,0 +1,247 @@
+import groovy.json.JsonBuilder
+import groovy.json.JsonSlurperClassic
+
+pipeline {
+    agent { label 'docker' }
+
+    parameters {
+        choice(
+                name: 'CHOICE',
+                choices: [
+                        'my-app'                        
+                ],
+                description: 'Pick an project to build'
+        )
+    }
+
+    environment {
+        //change project name to build other Smile components with the same pipeline
+        PROJECT_NAME = "${params.CHOICE}"
+
+        REPO_URL = 'URL for nexus repository / any other artifact management repository'
+        REPO_PUSH_PORT = 'push port'
+        REPO_PULL_PORT = 'pull port'
+
+        hpfortifyUrl = 'HP Fortify URL / any other secure code scaning tool url'
+        fortifyApplicationId = "${PROJECT_NAME}"
+        
+        nexusIqUrl = 'Nexus IQ url here / Any other library scanning tool url'
+        nexusIqUrlId = "${PROJECT_NAME}"
+        
+        dockerFilename = 'Dockerfile'
+
+        IMAGE_VERSION = "latest"
+        NEXUS_IQ_ARTIFACTID = "${PROJECT_NAME}"
+        IMAGE_NAME = "$NEXUS_IQ_ARTIFACTID"
+        TARGET_NAME = "$NEXUS_IQ_ARTIFACTID"
+        GIT_TAG = ""
+
+        INFO_VERSION = ""
+        INFO_BUILD_NUMBER = "${env.BUILD_NUMBER}"
+        INFO_BUILD_URL = "${env.BUILD_URL}"
+        INFO_JOB_NAME = "${env.JOB_NAME}"
+        INFO_GIT_URL = "https://github.com/Ritesh2684/${PROJECT_NAME}.git"
+        INFO_GIT_COMMITID = ""
+
+        smokeTestCommandGiven="java -version 2>&1"
+        smokeTestCommandOututExpected='openjdk version "1.8.0_181"'
+        //========================
+        // taking an assumption that credentials are stored Jenkins Credentials store
+        jenkinsTechnicalAccountId="MYAPP_BUILDER"
+        
+        nexusIqUrl
+
+    }
+
+
+    stages {
+
+        stage('Notification') {
+            steps {
+                script {
+                    slackSend "Build Started - ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+                }
+            }
+        }
+
+        stage ('Checkout') {
+            steps {
+                println "================================"
+                println "Selected project: [$PROJECT_NAME]"
+                println "================================"
+                checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: "${jenkinsTechnicalAccountId}",url: "${INFO_GIT_URL}"]]])
+                script {
+                    sh "pwd"
+                    sh "ls -latr"
+                }
+            }
+        }
+
+        stage('Prepare') {
+            steps {
+                script {
+                    def registry = "https://${env.REPO_URL}:${env.REPO_PULL_PORT}"
+                    docker.withRegistry(registry, ${jenkinsTechnicalAccountId}) {
+                        docker.image('maven:3.5.4-jdk-8-alpine').inside('-v $HOME/.m2:/root/.m2') {
+                            sh 'ls -latr'
+                            sh 'pwd'
+                            // assuming that we have stored settings.xml as secrets file in Jenkins credentials store
+                            withCredentials([string(credentialsId: 'SETTINGS_XML', variable: 'settingsXml')]) {
+                                sh "echo ${settingsXml} > settings.xml"
+                            }                           
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build & Unit Test') {
+            steps {
+                script {
+                    def registry = "https://${env.REPO_URL}:${env.REPO_PULL_PORT}"
+                    docker.withRegistry(registry, ${jenkinsTechnicalAccountId}) {
+                        docker.image('maven:3.5.4-jdk-8-alpine').inside('-v $HOME/.m2:/root/.m2') {
+                            sh "apk update && apk upgrade && apk add git"
+                            sh "git config --global user.email \"callritesh2005@gmail.com\" && git config --global user.name \"MYAPP_BUILDER\""
+                            sh "mvn clean package -s ./settings.xml"
+                        }
+                    }
+                }
+            }
+        }
+
+
+        stage('Static Code Analysis') {
+
+            parallel {
+                stage('NexusIQ - Tool used for lib scanning') {
+                    steps {
+                        script {
+                            def registry = "https://${env.REPO_URL}:${env.REPO_PULL_PORT}"
+                            docker.withRegistry(registry, ${jenkinsTechnicalAccountId}) {
+                                docker.image('maven:3.5.4-jdk-8-alpine').inside('-v $HOME/.m2:/root/.m2') {
+                                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: ${jenkinsTechnicalAccountId}, passwordVariable: 'password', usernameVariable: 'username']]) {
+                                        sh "mvn com.sonatype.clm:clm-maven-plugin:2.6.0-01:evaluate -Dclm.serverUrl=${nexusIqUrl}  -Dclm.applicationId=${nexusIqUrlId} -Dclm.username=${env.username} -Dclm.password=${env.password}  --settings=./settings.xml "
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                stage('SonarQube - Tool used for Code quality scanning') {
+                    steps {
+                        script {
+                            def registry = "https://${env.REPO_URL}:${env.REPO_PULL_PORT}"
+                            docker.withRegistry(registry, ${jenkinsTechnicalAccountId}) {
+                                docker.image('maven:3.5.4-jdk-8-alpine').inside('-v $HOME/.m2:/root/.m2') {
+                                    withSonarQubeEnv('Sonar') {
+                                        sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.2:sonar -Dsonar.scm.disabled=true -s ./settings.xml'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('HPFortify - Tool used for Secure Code Analysis') {
+
+            steps {
+                script {
+                    def registry = "https://${env.REPO_URL}:${env.REPO_PUSH_PORT}"
+                    docker.withRegistry(registry, ${jenkinsTechnicalAccountId}) {
+                        // assuming that we have stored HPEFortifyAuthtoken in Jenkins credentials store
+                        withCredentials([string(credentialsId: 'HPEFortifyAuthtoken', variable: 'hpFortifyAuthToken')]) {
+                            echo "using fortify access token ${hpFortifyAuthToken}"
+                            docker.image('hpfortify:latest').inside('-v $HOME/.m2:/root/.m2') {
+                                sh "sourceanalyzer --version"
+                                sh "sourceanalyzer -b ${env.JOB_BASE_NAME} -clean"
+                                sh 'mvn clean install -s ./settings.xml -DskipTests'
+                                sh "mvn com.hpe.security.fortify.maven.plugin:sca-maven-plugin:16.20:translate -Dfortify.sca.buildId=${env.JOB_BASE_NAME} -DskipTests -e -s ./settings.xml"
+                                sh "sourceanalyzer -b ${env.JOB_BASE_NAME} -scan -f ${env.JOB_BASE_NAME}.fpr"
+                                sh "fortifyclient uploadFPR -url ${hpfortifyUrl} -file ${env.JOB_BASE_NAME}.fpr -authtoken ${hpFortifyAuthToken} -application ${fortifyApplicationId} -applicationVersion 1.0"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Syntax check") {
+            steps {
+                script {
+                    println "[Stage Syntax Check] Check syntax of Dockerfile using Lint"                    
+                }
+            }
+        }
+
+        stage("Docker Image Build") {
+            steps {
+                script {
+                    println "[Stage Build] Build the Docker image - overwrite when using special params."
+                    withCredentials([usernamePassword(credentialsId:  ${jenkinsTechnicalAccountId}, usernameVariable: 'username', passwordVariable: 'password')]) {
+                        INFO_GIT_COMMITID = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+                        echo "${INFO_GIT_COMMITID}"
+                        sh "docker login -u ${username} -p \"${password}\" ${REPO_URL}:${REPO_PUSH_PORT}"
+                        sh "docker build -t ${NEXUS_IQ_ARTIFACTID}:latest --build-arg VERSION=latest --build-arg BUILD_DATE=\"${INFO_BUILD_NUMBER}\" --build-arg VSC_URL=${INFO_BUILD_URL} --build-arg VCS_REF=${INFO_JOB_NAME} -f ${dockerFilename} ."
+                    }
+                }
+            }
+        }
+
+        stage('Container Security') {
+               stage("Twistlock - Tool used for image scan and dynamic container scanning. Other tools Nexus IQ, Anchore, Aquasec") {
+                    steps {
+                        script {
+                            println "[Stage NexusIQ] Perform Twistlock anlalysis on third party dependencies inside the Docker image."
+                        }
+                    }
+              }               
+        }
+        
+        stage('Smoketest') {
+            steps {
+                script {
+                    println "[Stage Smoketest] Run the container and do a simple smoketest."
+                    sh "Execute smoke test here"
+                }
+
+            }
+        }
+
+        stage("Tag & Push") {
+            steps {
+                withCredentials([usernamePassword(credentialsId: ${jenkinsTechnicalAccountId}, usernameVariable: 'username', passwordVariable: 'password')]) {
+                    script {
+                        println "[Stage Tag & Push] Tag the image and push it to Docker registry."
+                        sh "docker login -u ${username} -p \"${password}\" ${REPO_URL}:${REPO_PUSH_PORT}"
+                        sh "docker tag ${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_URL}:${REPO_PUSH_PORT}/${IMAGE_NAME}:${IMAGE_VERSION}"
+						sh "docker push ${REPO_URL}:${REPO_PUSH_PORT}/${IMAGE_NAME}:${IMAGE_VERSION}"                        
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+                  slackNotifier(currentBuild.currentResult)
+        }
+    }
+
+}
+
+
+def slackNotifier(String buildResult) {
+    if (buildResult == "SUCCESS") {
+        slackSend color: "good", message: "Job: ${env.JOB_NAME} with buildnumber ${env.BUILD_NUMBER} was successful"
+    } else if (buildResult == "FAILURE") {
+        slackSend color: "danger", message: "Job: ${env.JOB_NAME} with buildnumber ${env.BUILD_NUMBER} was failed"
+    } else if (buildResult == "UNSTABLE") {
+        slackSend color: "warning", message: "Job: ${env.JOB_NAME} with buildnumber ${env.BUILD_NUMBER} was unstable"
+    } else {
+        slackSend color: "danger", message: "Job: ${env.JOB_NAME} with buildnumber ${env.BUILD_NUMBER} its resulat was unclear"
+    }
+}
