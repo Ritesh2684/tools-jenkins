@@ -63,7 +63,8 @@ As a solution to Part 2, Pipeline scripts should be maintained in scm repository
 
 ![Screenshot](pipeline-library.png)
 
-As a reference, I have added a 
+As a reference, I have added a jenkinsfile_usingLibrary file in the repository, which specifies how the library added in Jenkins environment could be referred from another project in need of the same scripts. 
+All the required properties could be configured and passed to the function dockerizedSTPL as a config map to a function in our Jenkins job.
 
 
         
