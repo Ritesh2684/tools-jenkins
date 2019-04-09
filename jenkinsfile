@@ -5,6 +5,7 @@ pipeline {
     agent { label 'docker' }
 
     parameters {
+        // add more project names to use the same pipeline for multiple projects
         choice(
                 name: 'CHOICE',
                 choices: [
@@ -15,7 +16,7 @@ pipeline {
     }
 
     environment {
-        //change project name to build other Smile components with the same pipeline
+
         PROJECT_NAME = "${params.CHOICE}"
 
         REPO_URL = 'URL for nexus repository / any other artifact management repository'
